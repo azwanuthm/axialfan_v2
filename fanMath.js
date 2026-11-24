@@ -79,7 +79,7 @@ export function transformSectionPoint(p, s, v) {
   const chord = v.Root * chordFactor;
   const { twistDeg } = getStationAero(s, v);
 
-  const sweepOffset = v.Sweep * (2 * Math.pow(sClamped, 3) - sClamped);
+  const sweepOffset = -v.Sweep * (2 * Math.pow(sClamped, 3) - sClamped);
   const leanOffset = v.AxialLean * Math.pow(sClamped, 1.5);
 
   const pitchAxis = 0.45;
