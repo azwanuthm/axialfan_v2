@@ -106,7 +106,7 @@ function buildRotorSolid(v) {
   const hubDepth = Math.max(36, axialProj * 1.4 + 14, v.Root * 1.25);
   const rootEmbed = Math.min(14, v.Hub * 0.35);
   const spinnerLen = v.Hub * v.SpinnerRatio;
-  const spinnerLen = v.Hub * v.SpinnerRatio;
+
 
   self.postMessage({ type: 'progress', message: 'Membina bilah (NURBS Loft & Tip Trim)...' });
   const masterBlade = buildBladeSolid(v, rootEmbed);
