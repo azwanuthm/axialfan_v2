@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Makmal Maya Kipas Paksi & Penjana CAD (.STEP)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Inter,system-ui,sans-serif;background:#eef2f7;color:#1f2937}
+    #canvas-container{position:absolute;inset:0}
+    .panel{position:absolute;z-index:10;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);box-shadow:0 12px 32px rgba(15,23,42,.16);border:1px solid rgba(148,163,184,.25)}
+    .scrollbar::-webkit-scrollbar{width:6px}.scrollbar::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:9px}
+    input[type=range]{accent-color:#0ea5e9}
+    .metric{display:flex;justify-content:space-between;gap:10px;padding:3px 0}.metric strong{color:#34d399}
+    canvas.mini-plot{width:100%;height:110px;border-radius:10px;background:#f8fafc;border:1px solid #dbe3ee}
+    .badge{display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700}
+    details>summary{list-style:none;cursor:pointer}
+    details>summary::-webkit-details-marker{display:none}
+    @media(max-width:960px){#leftPanel{width:300px}.right-panel{display:none}}
+  </style>
+</head>
+<body>
+  <div id="canvas-container" aria-label="Paparan kipas paksi 3D"></div>
+
+  <!-- PANEL KIRI: KAWALAN & PRATETAP -->
+  <aside id="leftPanel" class="panel scrollbar left-3 top-3 bottom-3 w-80 rounded-2xl p-4 overflow-y-auto">
+    <div class="mb-3 border-b pb-3">
+      <span class="badge bg-sky-100 text-sky-700">MAKMAL MAYA & CAD</span>
+      <h1 class="mt-1 text-lg font-extrabold text-slate-900">Penjana Kipas Paksi Industri</h1>
+      <p class="text-[11px] text-slate-500">Pelajari profil bilah, segi tiga halaju & jana fail .STEP untuk SWFS.</p>
+    </div>
+
+    <!-- 1. PRATETAP APLIKASI SEBENAR -->
+    <section class="mb-4 rounded-xl bg-slate-50 p-3 border border-slate-200">
+      <h2 class="mb-2 text-xs font-bold text-slate-800">1. Pratetap Aplikasi Sebenar</h2>
+      <div class="grid grid-cols-3 gap-1.5 mb-2">
+        <button type="button" data-preset="radiator" class="preset-btn rounded-lg bg-white border border-slate-300 px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-sky-50 hover:border-sky-400">Radiator</button>
+        <button type="button" data-preset="hvac" class="preset-btn rounded-lg bg-white border border-slate-300 px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-sky-50 hover:border-sky-400">HVAC Duct</button>
+        <button type="button" data-preset="cooling" class="preset-btn rounded-lg bg-white border border-slate-300 px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-sky-50 hover:border-sky-400">Aliran Bebas</button>
+      </div>
+      <p id="presetNote" class="text-[10px] leading-relaxed text-slate-600">Pilih pratetap untuk melihat bagaimana geometri bilah disesuaikan mengikut beban tekanan.</p>
+    </section>
+
+    <!-- 2. KEADAAN OPERASI & AUTO-TWIST -->
+    <section class="mb-4 rounded-xl bg-sky-50 p-3 border border-sky-100">
+      <h2 class="mb-2 text-xs font-bold text-sky-900">2. Titik Operasi & Aerodinamik</h2>
+      <label class="mb-1 block text-xs">Kelajuan Motor: <b id="valRPM">1450</b> rpm</label>
+      <input id="inpRPM" type="range" min="0" max="3500" step="50" value="1450" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Halaju Paksi (Vz): <b id="valWind">6.0</b> m/s</label>
+      <input id="inpWind" type="range" min="0.5" max="30" step="0.5" value="6" class="mb-3 w-full">
+
+      <label class="flex items-center gap-2 text-xs font-semibold text-sky-900 mb-2">
+        <input id="chkAutoTwist" type="checkbox" checked> Mod Auto-Twist (Free Vortex)
+      </label>
+      <div id="boxAoA">
+        <label class="mb-1 block text-[11px] text-sky-800">Sudut Serangan Sasaran (α): <b id="valAoA">4</b>°</label>
+        <input id="inpAoA" type="range" min="0" max="10" step="0.5" value="4" class="w-full">
+      </div>
+      <div id="boxManualTwist" class="hidden mt-2 pt-2 border-t border-sky-200">
+        <label class="mb-1 block text-xs">Root Twist (Manual): <b id="valRootTwist">42</b>°</label>
+        <input id="inpRootTwist" type="range" min="5" max="70" step="1" value="42" class="mb-2 w-full">
+        <label class="mb-1 block text-xs">Tip Twist (Manual): <b id="valTipTwist">16</b>°</label>
+        <input id="inpTipTwist" type="range" min="5" max="50" step="1" value="16" class="w-full">
+      </div>
+    </section>
+
+    <!-- 3. GEOMETRI UTAMA ROTOR -->
+    <details open class="mb-3 border-t pt-3">
+      <summary class="text-xs font-bold text-slate-800 flex justify-between items-center mb-2">
+        <span>3. Dimensi Rotor & Bilah</span><span class="text-slate-400">▾</span>
+      </summary>
+      <label class="mb-1 block text-xs">Bilangan Bilah: <b id="valBlades">7</b></label>
+      <input id="inpBlades" type="range" min="3" max="15" step="1" value="7" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Jejari Hab: <b id="valHub">60</b> mm</label>
+      <input id="inpHub" type="range" min="20" max="150" step="1" value="60" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Panjang Bilah (Span): <b id="valSpan">160</b> mm</label>
+      <input id="inpSpan" type="range" min="50" max="350" step="5" value="160" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Kord Pangkal (Root): <b id="valRoot">42</b> mm</label>
+      <input id="inpRoot" type="range" min="15" max="100" step="1" value="42" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Kembangan Hujung (Taper): <b id="valTaper">1.35</b> x</label>
+      <input id="inpTaper" type="range" min="0.40" max="2.40" step="0.05" value="1.35" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Sapuan Sabit (Sweep): <b id="valSweep">22</b> mm</label>
+      <input id="inpSweep" type="range" min="-50" max="50" step="1" value="22" class="w-full">
+    </details>
+
+    <!-- 4. PROFIL C4 & GEOMETRI LANJUTAN (INDUSTRI) -->
+    <details class="mb-3 border-t pt-3">
+      <summary class="text-xs font-bold text-slate-800 flex justify-between items-center mb-2">
+        <span>4. Profil C4 & Spesifikasi Industri</span><span class="text-slate-400">▾</span>
+      </summary>
+      <label class="mb-1 block text-xs">Camber Pangkal (Root): <b id="valRootCamber">9</b>%</label>
+      <input id="inpRootCamber" type="range" min="0" max="15" step="1" value="9" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Camber Hujung (Tip): <b id="valTipCamber">5</b>%</label>
+      <input id="inpTipCamber" type="range" min="0" max="15" step="1" value="5" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Tebal Pangkal (Root): <b id="valRootThick">12</b>%</label>
+      <input id="inpRootThick" type="range" min="8" max="22" step="1" value="12" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Tebal Hujung (Tip): <b id="valTipThick">6</b>%</label>
+      <input id="inpTipThick" type="range" min="3" max="12" step="1" value="6" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Kecondongan Paksi (Axial Lean): <b id="valAxialLean">8</b> mm</label>
+      <input id="inpAxialLean" type="range" min="-30" max="30" step="1" value="8" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Tebal Min. Trailing Edge: <b id="valTEMin">1.2</b> mm</label>
+      <input id="inpTEMin" type="range" min="0.4" max="3.0" step="0.2" value="1.2" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Diameter Lubang Aci (Bore): <b id="valShaftBore">20</b> mm</label>
+      <input id="inpShaftBore" type="range" min="0" max="80" step="2" value="20" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Nisbah Spinner Elipsoid: <b id="valSpinnerRatio">1.2</b> x</label>
+      <input id="inpSpinnerRatio" type="range" min="0.5" max="2.0" step="0.1" value="1.2" class="mb-2 w-full">
+      <label class="flex items-center gap-2 text-xs mt-1"><input id="chkTipTrim" type="checkbox" checked> Concentric Tip Trimming</label>
+    </details>
+
+    <!-- PAPARAN -->
+    <section class="mb-3 border-t pt-3">
+      <label class="mb-1.5 flex items-center gap-2 text-xs"><input id="chkDuct" type="checkbox" checked> Paparkan Selongsong (Visual Sahaja)</label>
+      <label class="mb-1.5 flex items-center gap-2 text-xs"><input id="chkAxis" type="checkbox" checked> Paksi & Arah Aliran</label>
+      <label class="flex items-center gap-2 text-xs"><input id="chkPhysical" type="checkbox"> Animasi Laju Fizikal</label>
+    </section>
+
+    <!-- EKSPORT CAD & PANDUAN SWFS -->
+    <div class="border-t pt-3">
+      <p class="mb-2 text-[11px] font-bold text-slate-800">Eksport Pepejal CAD (SolidWorks)</p>
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <button type="button" id="btnExportBladeSTEP" class="rounded-lg bg-indigo-600 px-2 py-2 text-[10px] font-bold text-white hover:bg-indigo-700 disabled:opacity-50">STEP: Satu Bilah</button>
+        <button type="button" id="btnExportRotorSTEP" class="rounded-lg bg-violet-700 px-2 py-2 text-[10px] font-bold text-white hover:bg-violet-800 disabled:opacity-50">STEP: Rotor</button>
+      </div>
+      <p id="cadStatus" class="mb-2 text-[10px] text-indigo-700 font-semibold hidden"></p>
+
+      <button type="button" id="btnSWFSSheet" class="w-full mb-3 rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-700">
+        Panduan Tetapan SWFS (.txt)
+      </button>
+
+      <details>
+        <summary class="text-[10px] font-bold text-slate-500 mb-1.5">Eksport Mesh Alternatif (STL / OBJ) ▾</summary>
+        <div class="grid grid-cols-2 gap-1.5">
+          <button type="button" id="btnExportBladeSTL" class="rounded bg-sky-600 px-2 py-1.5 text-[10px] font-bold text-white">STL: Bilah</button>
+          <button type="button" id="btnExportRotorSTL" class="rounded bg-slate-800 px-2 py-1.5 text-[10px] font-bold text-white">STL: Rotor</button>
+          <button type="button" id="btnExportBladeOBJ" class="rounded bg-teal-600 px-2 py-1.5 text-[10px] font-bold text-white">OBJ: Bilah</button>
+          <button type="button" id="btnExportRotorOBJ" class="rounded bg-emerald-800 px-2 py-1.5 text-[10px] font-bold text-white">OBJ: Rotor</button>
+        </div>
+      </details>
+    </div>
+  </aside>
+
+  <!-- PANEL KANAN ATAS: PROFIL C4 & SEGI TIGA HALAJU -->
+  <aside class="panel right-panel right-3 top-3 w-72 rounded-2xl p-3.5">
+    <div class="flex items-center justify-between border-b pb-1.5">
+      <h2 class="text-xs font-bold text-slate-900">Keratan C4 & Segi Tiga Halaju</h2>
+      <select id="selStation" class="text-[10px] border rounded px-1 py-0.5 bg-slate-50 font-semibold">
+        <option value="0">Pangkal (Root)</option>
+        <option value="0.5" selected>Tengah (Mid)</option>
+        <option value="1">Hujung (Tip)</option>
+      </select>
+    </div>
+    <canvas id="airfoilCanvas" width="520" height="200" class="mini-plot mt-2"></canvas>
+    <div id="airfoilInfo" class="mt-1.5 text-[10px] text-slate-600 leading-tight"></div>
+
+    <h3 class="mt-3 mb-1 text-[11px] font-bold text-slate-800">Segi Tiga Halaju (U, Vz, W)</h3>
+    <canvas id="velCanvas" width="520" height="200" class="mini-plot"></canvas>
+    <div id="aeroAlerts" class="mt-2 space-y-1 text-[10px]"></div>
+  </aside>
+
+  <!-- PANEL KANAN BAWAH: METRIK AERODINAMIK -->
+  <aside class="panel right-panel bottom-3 right-3 w-72 rounded-2xl bg-slate-950 p-3.5 font-mono text-[11px] text-slate-300">
+    <div class="mb-1.5 flex items-center justify-between border-b border-slate-700 pb-1.5">
+      <h2 class="font-bold text-white">Parameter Aerodinamik</h2>
+      <span id="badgeMode" class="badge bg-emerald-900 text-emerald-300">FREE VORTEX</span>
+    </div>
+    <div class="metric"><span>Diameter Rotor</span><strong id="outDiameter">0.000 m</strong></div>
+    <div class="metric"><span>Kadar Aliran (Q)</span><strong id="outFlow">0.000 m³/s</strong></div>
+    <div class="metric"><span>Laju Hujung (Utip)</span><strong id="outTipSpeed">0.00 m/s</strong></div>
+    <div class="metric"><span>Pekali Aliran (φ)</span><strong id="outPhi">0.000</strong></div>
+    <div class="metric"><span>Solidity (Mid)</span><strong id="outSolidity">0.0%</strong></div>
+    <div class="metric"><span>Sudut Root ➔ Tip</span><strong id="outTwistRange">0° ➔ 0°</strong></div>
+  </aside>
+
+  <!-- MODAL PANDUAN TETAPAN SWFS -->
+  <div id="swfsModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-5 border border-slate-200">
+      <div class="flex justify-between items-center border-b pb-2 mb-3">
+        <h2 class="text-sm font-extrabold text-slate-900">Panduan Tetapan SolidWorks Flow Simulation (SWFS)</h2>
+        <button id="btnCloseModal" class="text-slate-400 hover:text-slate-700 font-bold text-lg">&times;</button>
+      </div>
+      <pre id="swfsContent" class="bg-slate-950 text-emerald-300 p-3 rounded-xl text-[11px] font-mono overflow-x-auto max-h-80 leading-relaxed"></pre>
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="btnCopySWFS" class="rounded-lg bg-slate-200 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-300">Salin Teks</button>
+        <button id="btnDownloadSWFS" class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700">Muat Turun (.txt)</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>
