@@ -1,7 +1,7 @@
 import opencascade from 'replicad-opencascadejs/src/replicad_single.js';
 import opencascadeWasm from 'replicad-opencascadejs/src/replicad_single.wasm?url';
 import { setOC, draw, Plane, makeCylinder } from 'replicad';
-import { c4Surfaces, transformSectionPoint, lerp, clamp } from './fanMath.js';
+import { c4Surfaces, transformSectionPoint, getStationAero, lerp, clamp } from './fanMath.js';
 
 let ocLoaded = false;
 
