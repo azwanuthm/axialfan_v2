@@ -101,8 +101,11 @@ function buildEllipsoidSpinner(radius, length, zBase) {
 }
 
 function buildRotorSolid(v) {
-  const hubDepth = Math.max(30, v.Root * 1.25);
-  const rootEmbed = Math.min(8, v.Hub * 0.25);
+  const rootAero = getStationAero(0, v);
+  const axialProj = v.Root * Math.sin((rootAero.twistDeg * Math.PI) / 180);
+  const hubDepth = Math.max(36, axialProj * 1.4 + 14, v.Root * 1.25);
+  const rootEmbed = Math.min(14, v.Hub * 0.35);
+  const spinnerLen = v.Hub * v.SpinnerRatio;
   const spinnerLen = v.Hub * v.SpinnerRatio;
 
   self.postMessage({ type: 'progress', message: 'Membina bilah (NURBS Loft & Tip Trim)...' });
