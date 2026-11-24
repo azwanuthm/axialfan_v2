@@ -470,7 +470,7 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
   const rpm = Number($('inpRPM').value);
-  if (rpm > 0) {
+  if ($('chkSpin').checked && rpm > 0) {
     const physical = $('chkPhysical').checked;
     const omega = (2 * Math.PI * rpm) / 60;
     rotorGroup.rotation.z += omega * dt * (physical ? 1 : 0.05);
