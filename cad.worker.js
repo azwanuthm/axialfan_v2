@@ -1,7 +1,7 @@
 import opencascade from 'replicad-opencascadejs/src/replicad_single.js';
 import opencascadeWasm from 'replicad-opencascadejs/src/replicad_single.wasm?url';
 import { setOC, draw, Plane, makeCylinder } from 'replicad';
-import { c4Surfaces, transformSectionPoint, getStationAero, lerp, clamp } from './fanMath.js';
+import { c4Surfaces, transformSectionPoint, getStationAero, getChord, lerp, clamp } from './fanMath.js';
 
 let ocLoaded = false;
 
@@ -49,7 +49,7 @@ function buildBladeSolid(v, rootEmbed = 0) {
     const sClamped = clamp(s, 0, 1);
     const thick = lerp(v.RootThick, v.TipThick, sClamped);
     const camber = lerp(v.RootCamber, v.TipCamber, sClamped);
-    const chord = v.Root * (1 + (v.Taper - 1) * Math.pow(sClamped, 1.5));
+    const chord = getChord(sClamped, v);
 
     const { upper, lower } = c4Surfaces(camber, thick, chord, v.TEMin, 18);
 
@@ -81,7 +81,8 @@ function buildBladeSolid(v, rootEmbed = 0) {
   // Potongan hujung sepusat (Concentric Tip Trimming)
   if (v.TipTrim) {
     const rTip = v.Hub + v.Span;
-    const trimDepth = Math.max(400, (v.Root * v.Taper + Math.abs(v.AxialLean)) * 4);
+    const maxChord = Math.max(getChord(0.5, v), getChord(1, v));
+    const trimDepth = Math.max(400, (maxChord + Math.abs(v.AxialLean)) * 4);
     const trimCyl = makeCylinder(rTip, trimDepth, [0, 0, -trimDepth / 2], [0, 0, 1]);
     blade = blade.intersect(trimCyl);
   }
@@ -103,18 +104,22 @@ function buildEllipsoidSpinner(radius, length, zBase) {
 function buildRotorSolid(v) {
   const rootAero = getStationAero(0, v);
   const axialProj = v.Root * Math.sin((rootAero.twistDeg * Math.PI) / 180);
-  const hubDepth = Math.max(36, axialProj * 1.4 + 14, v.Root * 1.25);
-  const rootEmbed = Math.min(14, v.Hub * 0.35);
-  const spinnerLen = v.Hub * v.SpinnerRatio;
-
+  const hubDepth = Math.max(16, axialProj * 1.25 + 6, v.Root * 1.05);
+  const rootEmbed = Math.min(12, v.Hub * 0.35);
 
   self.postMessage({ type: 'progress', message: 'Membina bilah (NURBS Loft & Tip Trim)...' });
   const masterBlade = buildBladeSolid(v, rootEmbed);
 
-  self.postMessage({ type: 'progress', message: 'Membina hab & spinner elipsoid...' });
-  const hub = makeCylinder(v.Hub, hubDepth, [0, 0, -hubDepth / 2], [0, 0, 1]);
-  const spinner = buildEllipsoidSpinner(v.Hub, spinnerLen, hubDepth / 2);
-  let rotor = hub.fuse(spinner);
+  self.postMessage({ type: 'progress', message: 'Membina hab rotor...' });
+  let rotor = makeCylinder(v.Hub, hubDepth, [0, 0, -hubDepth / 2], [0, 0, 1]);
+
+  // Bina spinner hanya jika SpinnerRatio > 0 (membenarkan hab rata untuk kipas PC)
+  if (v.SpinnerRatio > 0.05) {
+    self.postMessage({ type: 'progress', message: 'Membina spinner elipsoid...' });
+    const spinnerLen = v.Hub * v.SpinnerRatio;
+    const spinner = buildEllipsoidSpinner(v.Hub, spinnerLen, hubDepth / 2);
+    rotor = rotor.fuse(spinner);
+  }
 
   for (let i = 0; i < v.Blades; i++) {
     self.postMessage({ type: 'progress', message: `Mencantum bilah ${i + 1} / ${v.Blades}...` });
