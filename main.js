@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
-import { c4Surfaces, transformSectionPoint, getStationAero, lerp } from './fanMath.js';
+import { c4Surfaces, transformSectionPoint, getStationAero, getChord, lerp } from './fanMath.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -43,26 +43,30 @@ const inputMap = {
   RPM: 'inpRPM', Wind: 'inpWind', AoA: 'inpAoA',
   RootTwist: 'inpRootTwist', TipTwist: 'inpTipTwist',
   Blades: 'inpBlades', Hub: 'inpHub', Span: 'inpSpan',
-  Root: 'inpRoot', Taper: 'inpTaper', Sweep: 'inpSweep',
-  RootCamber: 'inpRootCamber', TipCamber: 'inpTipCamber',
+  Root: 'inpRoot', Taper: 'inpTaper', MidBulge: 'inpMidBulge',
+  Sweep: 'inpSweep', RootCamber: 'inpRootCamber', TipCamber: 'inpTipCamber',
   RootThick: 'inpRootThick', TipThick: 'inpTipThick',
   AxialLean: 'inpAxialLean', TEMin: 'inpTEMin',
   ShaftBore: 'inpShaftBore', SpinnerRatio: 'inpSpinnerRatio'
 };
 
-// --- Pratetap Aplikasi Sebenar ---
+// --- 4 Pratetap Aplikasi Sebenar ---
 const PRESETS = {
+  pc: {
+    note: 'Kipas PC 120mm (Tekanan Statik): Hab rata (tanpa spinner), 7 bilah lebar di tengah (Mid-Bulge) dan melengkung sabit penuh (C-Curve) untuk menolak udara menembusi sirip heatsink/radiator.',
+    values: { RPM: 1800, Wind: 3.5, AutoTwist: true, AoA: 4.5, Blades: 7, Hub: 20, Span: 38, Root: 20, Taper: 0.45, MidBulge: 0.65, Sweep: 22, SweepMode: 'c-curve', RootCamber: 10, TipCamber: 6, RootThick: 10, TipThick: 5, AxialLean: 2, TEMin: 0.8, ShaftBore: 6, SpinnerRatio: 0.0 }
+  },
   radiator: {
-    note: 'Kipas Radiator Automotif: Solidity tinggi, kord hujung lebar (taper 1.55x) dan sapuan sabit ketara untuk melawan rintangan tekanan tinggi serta mengurangkan hingar.',
-    values: { RPM: 1800, Wind: 6.5, AutoTwist: true, AoA: 4.5, Blades: 9, Hub: 65, Span: 145, Root: 44, Taper: 1.55, Sweep: 32, RootCamber: 10, TipCamber: 6, RootThick: 12, TipThick: 6, AxialLean: 10, TEMin: 1.2, ShaftBore: 20, SpinnerRatio: 1.0 }
+    note: 'Kipas Radiator Automotif: Solidity tinggi, kord lebar dan sapuan sabit ke hadapan (Forward Sweep) untuk melawan rintangan tekanan tinggi serta mengurangkan hingar.',
+    values: { RPM: 1800, Wind: 6.5, AutoTwist: true, AoA: 4.5, Blades: 9, Hub: 65, Span: 145, Root: 44, Taper: 1.55, MidBulge: 0.15, Sweep: 32, SweepMode: 's-curve', RootCamber: 10, TipCamber: 6, RootThick: 12, TipThick: 6, AxialLean: 10, TEMin: 1.2, ShaftBore: 20, SpinnerRatio: 1.0 }
   },
   hvac: {
-    note: 'Kipas Terowong / HVAC Ducted: Nisbah hab-ke-hujung seimbang, bilangan bilah sederhana, dan hujung dipotong sepusat bagi meminimumkan kebocoran aliran di dinding duct.',
-    values: { RPM: 1450, Wind: 9.0, AutoTwist: true, AoA: 4.0, Blades: 7, Hub: 75, Span: 175, Root: 48, Taper: 1.20, Sweep: 18, RootCamber: 8, TipCamber: 4, RootThick: 13, TipThick: 6, AxialLean: 6, TEMin: 1.4, ShaftBore: 28, SpinnerRatio: 1.4 }
+    note: 'Kipas Terowong / HVAC Ducted: Nisbah hab-ke-hujung seimbang, spinner elipsoid, dan hujung dipotong sepusat bagi meminimumkan kebocoran aliran di dinding duct.',
+    values: { RPM: 1450, Wind: 9.0, AutoTwist: true, AoA: 4.0, Blades: 7, Hub: 75, Span: 175, Root: 48, Taper: 1.20, MidBulge: 0.0, Sweep: 18, SweepMode: 's-curve', RootCamber: 8, TipCamber: 4, RootThick: 13, TipThick: 6, AxialLean: 6, TEMin: 1.4, ShaftBore: 28, SpinnerRatio: 1.4 }
   },
   cooling: {
-    note: 'Kipas Aliran Bebas (Cooling): Bilah lebih ramping (taper < 1.0) dan solidity rendah untuk menggerakkan isipadu udara tinggi pada rintangan tekanan rendah.',
-    values: { RPM: 1100, Wind: 4.5, AutoTwist: true, AoA: 3.5, Blades: 5, Hub: 45, Span: 185, Root: 38, Taper: 0.85, Sweep: 10, RootCamber: 7, TipCamber: 3, RootThick: 11, TipThick: 5, AxialLean: 0, TEMin: 1.0, ShaftBore: 16, SpinnerRatio: 1.2 }
+    note: 'Kipas Aliran Bebas (Ekzos / Cooling): Bilah lebih ramping (solidity rendah) dan hab kecil untuk menggerakkan isipadu udara maksimum pada rintangan tekanan rendah.',
+    values: { RPM: 1100, Wind: 4.5, AutoTwist: true, AoA: 3.5, Blades: 5, Hub: 45, Span: 185, Root: 38, Taper: 0.85, MidBulge: 0.0, Sweep: 10, SweepMode: 's-curve', RootCamber: 7, TipCamber: 3, RootThick: 11, TipThick: 5, AxialLean: 0, TEMin: 1.0, ShaftBore: 16, SpinnerRatio: 1.2 }
   }
 };
 
@@ -71,12 +75,17 @@ function values() {
   for (const [key, id] of Object.entries(inputMap)) v[key] = Number($(id).value);
   v.AutoTwist = $('chkAutoTwist').checked;
   v.TipTrim = $('chkTipTrim').checked;
+  v.SweepMode = $('selSweepMode').value;
   return v;
 }
 
 function syncUIValues() {
   for (const [key, id] of Object.entries(inputMap)) {
-    const decimals = ['Taper', 'Wind', 'AoA', 'TEMin', 'SpinnerRatio'].includes(key) ? (key === 'Taper' ? 2 : 1) : 0;
+    const decimals = ['Taper', 'MidBulge'].includes(key)
+      ? 2
+      : ['Wind', 'AoA', 'TEMin', 'SpinnerRatio'].includes(key)
+      ? 1
+      : 0;
     $(`val${key}`).textContent = Number($(id).value).toFixed(decimals);
   }
   const auto = $('chkAutoTwist').checked;
@@ -97,7 +106,7 @@ function buildBladeGeometry(v) {
     const s = j / (stations - 1);
     const thick = lerp(v.RootThick, v.TipThick, s);
     const camber = lerp(v.RootCamber, v.TipCamber, s);
-    const chord = v.Root * (1 + (v.Taper - 1) * Math.pow(s, 1.5));
+    const chord = getChord(s, v);
     const { upper, lower } = c4Surfaces(camber, thick, chord, v.TEMin, count);
     const profile = [...upper.slice().reverse(), ...lower.slice(1)];
 
@@ -150,7 +159,7 @@ function buildAxes(v) {
   axisGroup.clear();
   if (!$('chkAxis').checked) return;
   const R = v.Hub + v.Span;
-  axisGroup.add(new THREE.AxesHelper(Math.max(80, R * 0.55)));
+  axisGroup.add(new THREE.AxesHelper(Math.max(40, R * 0.55)));
   axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, 0, R * 1.5), R * 1.2, 0x0ea5e9, R * 0.1, R * 0.05));
 }
 
@@ -172,23 +181,26 @@ function updateRotor() {
 
   const rootAero = getStationAero(0, v);
   const axialProj = v.Root * Math.sin((rootAero.twistDeg * Math.PI) / 180);
-  const hubDepth = Math.max(36, axialProj * 1.4 + 14, v.Root * 1.25);
+  const hubDepth = Math.max(16, axialProj * 1.25 + 6, v.Root * 1.05);
+
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(v.Hub, v.Hub, hubDepth, 48), hubMaterial);
   hub.rotation.x = Math.PI / 2; hub.castShadow = true;
   rotorGroup.add(hub);
 
-  // Spinner Elipsoid
-  const spinnerGeo = new THREE.SphereGeometry(v.Hub, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2);
-  spinnerGeo.scale(1, v.SpinnerRatio, 1);
-  const spinner = new THREE.Mesh(spinnerGeo, hubMaterial);
-  spinner.rotation.x = Math.PI / 2;
-  spinner.position.z = hubDepth / 2;
-  spinner.castShadow = true;
-  rotorGroup.add(spinner);
+  // Papar Spinner Elipsoid hanya jika SpinnerRatio > 0
+  if (v.SpinnerRatio > 0.05) {
+    const spinnerGeo = new THREE.SphereGeometry(v.Hub, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2);
+    spinnerGeo.scale(1, v.SpinnerRatio, 1);
+    const spinner = new THREE.Mesh(spinnerGeo, hubMaterial);
+    spinner.rotation.x = Math.PI / 2;
+    spinner.position.z = hubDepth / 2;
+    spinner.castShadow = true;
+    rotorGroup.add(spinner);
+  }
 
   if ($('chkDuct').checked) {
     const ductRadius = v.Hub + v.Span + 2;
-    const ductGeo = new THREE.CylinderGeometry(ductRadius + 4, ductRadius + 4, hubDepth * 2, 64, 1, true);
+    const ductGeo = new THREE.CylinderGeometry(ductRadius + 3, ductRadius + 3, hubDepth * 1.6, 64, 1, true);
     const duct = new THREE.Mesh(ductGeo, ductMaterial);
     duct.rotation.x = Math.PI / 2;
     rotorGroup.add(duct);
@@ -210,7 +222,7 @@ function updateOutputs(v) {
   const flowQ = area * v.Wind;
   const phi = tipSpeed > 0 ? v.Wind / tipSpeed : 0;
 
-  const midChord = (v.Root * (1 + (v.Taper - 1) * Math.pow(0.5, 1.5))) / 1000;
+  const midChord = getChord(0.5, v) / 1000;
   const midRadius = (R + R_hub) / 2;
   const solidity = (v.Blades * midChord) / (2 * Math.PI * midRadius);
 
@@ -245,7 +257,7 @@ function drawAirfoil(v) {
   const ctx = canvas.getContext('2d');
   const thick = lerp(v.RootThick, v.TipThick, s);
   const camber = lerp(v.RootCamber, v.TipCamber, s);
-  const chord = v.Root * (1 + (v.Taper - 1) * Math.pow(s, 1.5));
+  const chord = getChord(s, v);
   const { upper, lower } = c4Surfaces(camber, thick, chord, v.TEMin, 40);
   const pts = [...upper.slice().reverse(), ...lower.slice(1)];
 
@@ -325,7 +337,9 @@ function generateSWFSText() {
   const area = Math.PI * (R * R - R_hub * R_hub);
   const omega = (2 * Math.PI * v.RPM) / 60;
   const flowQ = area * v.Wind;
-  const hubDepth = Math.max(30, v.Root * 1.25);
+  const rootAero = getStationAero(0, v);
+  const axialProj = v.Root * Math.sin((rootAero.twistDeg * Math.PI) / 180);
+  const hubDepth = Math.max(16, axialProj * 1.25 + 6, v.Root * 1.05);
 
   return `=== PANDUAN TETAPAN SOLIDWORKS FLOW SIMULATION (SWFS) ===
 Dijana oleh Makmal Maya Kipas Paksi
@@ -340,13 +354,14 @@ Dijana oleh Makmal Maya Kipas Paksi
    - Jenis Analisis       : Internal (dengan Duct) atau External
    - Tetapan Putaran      : Local Region(s) - Sliding Mesh / Averaging
    - Cadangan Jejari Zon  : ${(rTipMm + 2).toFixed(1)} mm (Tip Clearance ~2 mm)
-   - Cadangan Panjang Zon : ${(hubDepth * 1.6).toFixed(1)} mm (merangkumi bilah & spinner)
+   - Cadangan Panjang Zon : ${(hubDepth * 1.6).toFixed(1)} mm (merangkumi bilah & hab)
    - Halaju Sudut (ω)     : ${omega.toFixed(2)} rad/s  (${v.RPM} RPM)
 
 3. BOUNDARY CONDITIONS (SYARAT SEMPADAN)
-   - Inlet Velocity (Vz)  : ${v.Wind.toFixed(2)} m/s (arah paksi -Z ke +Z / mengikut orientasi)
+   - Sasaran Inlet Vz     : ${v.Wind.toFixed(2)} m/s (untuk ujian lengkung P-Q)
    - Anggaran Aliran (Q)  : ${flowQ.toFixed(4)} m³/s  (${(flowQ * 3600).toFixed(1)} m³/jam)
    - Outlet               : Environment Pressure (101325 Pa)
+   *(Untuk ujian Aliran Bebas / Free Delivery, set Environment Pressure pada kedua-dua Inlet & Outlet.)*
 
 4. TIP MESHING & GOALS
    - Tambah Local Initial Mesh pada permukaan bilah (Refine Fluid/Solid cells).
@@ -401,7 +416,7 @@ function scheduleUpdate() {
 for (const id of Object.values(inputMap)) {
   $(id).addEventListener('input', scheduleUpdate);
 }
-['chkAutoTwist', 'chkTipTrim', 'chkDuct', 'chkAxis', 'selStation'].forEach((id) => {
+['chkAutoTwist', 'chkTipTrim', 'chkDuct', 'chkAxis', 'selStation', 'selSweepMode'].forEach((id) => {
   $(id).addEventListener('change', scheduleUpdate);
 });
 
@@ -412,6 +427,7 @@ document.querySelectorAll('.preset-btn').forEach((btn) => {
     $('presetNote').textContent = p.note;
     for (const [k, val] of Object.entries(p.values)) {
       if (k === 'AutoTwist') $('chkAutoTwist').checked = val;
+      else if (k === 'SweepMode') $('selSweepMode').value = val;
       else if (inputMap[k]) $(inputMap[k]).value = val;
     }
     scheduleUpdate();
