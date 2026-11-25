@@ -33,7 +33,8 @@
     <!-- 1. PRATETAP APLIKASI SEBENAR -->
     <section class="mb-4 rounded-xl bg-slate-50 p-3 border border-slate-200">
       <h2 class="mb-2 text-xs font-bold text-slate-800">1. Pratetap Aplikasi Sebenar</h2>
-      <div class="grid grid-cols-3 gap-1.5 mb-2">
+      <div class="grid grid-cols-2 gap-1.5 mb-2">
+        <button type="button" data-preset="pc" class="preset-btn rounded-lg bg-white border border-slate-300 px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-sky-50 hover:border-sky-400">Kipas PC 120mm</button>
         <button type="button" data-preset="radiator" class="preset-btn rounded-lg bg-white border border-slate-300 px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-sky-50 hover:border-sky-400">Radiator</button>
         <button type="button" data-preset="hvac" class="preset-btn rounded-lg bg-white border border-slate-300 px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-sky-50 hover:border-sky-400">HVAC Duct</button>
         <button type="button" data-preset="cooling" class="preset-btn rounded-lg bg-white border border-slate-300 px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-sky-50 hover:border-sky-400">Aliran Bebas</button>
@@ -46,14 +47,14 @@
       <h2 class="mb-2 text-xs font-bold text-sky-900">2. Titik Operasi & Aerodinamik</h2>
       <label class="mb-1 block text-xs">Kelajuan Motor: <b id="valRPM">1450</b> rpm</label>
       <input id="inpRPM" type="range" min="0" max="3500" step="50" value="1450" class="mb-2 w-full">
-      <label class="mb-1 block text-xs">Sasaran Halaju Paksi (Vz): <b id="valWind">6.0</b> m/s</label>
+      <label class="mb-1 block text-xs">Sasaran Halaju Aliran (Vz): <b id="valWind">6.0</b> m/s</label>
       <input id="inpWind" type="range" min="0.5" max="30" step="0.5" value="6" class="mb-3 w-full">
 
       <label class="flex items-center gap-2 text-xs font-semibold text-sky-900 mb-2">
         <input id="chkAutoTwist" type="checkbox" checked> Mod Auto-Twist (Free Vortex)
       </label>
       <div id="boxAoA">
-        <label class="mb-1 block text-[11px] text-sky-800">Sudut Serangan Sasaran (α): <b id="valAoA">4</b>°</label>
+        <label class="mb-1 block text-[11px] text-sky-800">Sudut Serangan Sasaran (α): <b id="valAoA">4.0</b>°</label>
         <input id="inpAoA" type="range" min="0" max="10" step="0.5" value="4" class="w-full">
       </div>
       <div id="boxManualTwist" class="hidden mt-2 pt-2 border-t border-sky-200">
@@ -72,15 +73,22 @@
       <label class="mb-1 block text-xs">Bilangan Bilah: <b id="valBlades">7</b></label>
       <input id="inpBlades" type="range" min="3" max="15" step="1" value="7" class="mb-2 w-full">
       <label class="mb-1 block text-xs">Jejari Hab: <b id="valHub">60</b> mm</label>
-      <input id="inpHub" type="range" min="20" max="150" step="1" value="60" class="mb-2 w-full">
+      <input id="inpHub" type="range" min="10" max="150" step="1" value="60" class="mb-2 w-full">
       <label class="mb-1 block text-xs">Panjang Bilah (Span): <b id="valSpan">160</b> mm</label>
-      <input id="inpSpan" type="range" min="50" max="350" step="5" value="160" class="mb-2 w-full">
+      <input id="inpSpan" type="range" min="20" max="350" step="1" value="160" class="mb-2 w-full">
       <label class="mb-1 block text-xs">Kord Pangkal (Root): <b id="valRoot">42</b> mm</label>
-      <input id="inpRoot" type="range" min="15" max="100" step="1" value="42" class="mb-2 w-full">
+      <input id="inpRoot" type="range" min="10" max="100" step="1" value="42" class="mb-2 w-full">
       <label class="mb-1 block text-xs">Kembangan Hujung (Taper): <b id="valTaper">1.35</b> x</label>
-      <input id="inpTaper" type="range" min="0.40" max="2.40" step="0.05" value="1.35" class="mb-2 w-full">
-      <label class="mb-1 block text-xs">Sapuan Sabit (Sweep): <b id="valSweep">22</b> mm</label>
-      <input id="inpSweep" type="range" min="-50" max="50" step="1" value="22" class="w-full">
+      <input id="inpTaper" type="range" min="0.30" max="2.40" step="0.05" value="1.35" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Kembung Tengah (Mid-Bulge): <b id="valMidBulge">0.00</b> x</label>
+      <input id="inpMidBulge" type="range" min="-0.30" max="1.00" step="0.05" value="0" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Sapuan Sabit (+Fwd / -Bwd): <b id="valSweep">22</b> mm</label>
+      <input id="inpSweep" type="range" min="-50" max="50" step="1" value="22" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Mod Lengkungan Sweep:</label>
+      <select id="selSweepMode" class="w-full text-xs border border-slate-300 rounded-lg px-2 py-1 bg-white">
+        <option value="s-curve">Bentuk-S (Industri / HVAC)</option>
+        <option value="c-curve">Sabit Penuh (C-Curve / Kipas PC)</option>
+      </select>
     </details>
 
     <!-- 4. PROFIL C4 & GEOMETRI LANJUTAN (INDUSTRI) -->
@@ -93,21 +101,20 @@
       <label class="mb-1 block text-xs">Camber Hujung (Tip): <b id="valTipCamber">5</b>%</label>
       <input id="inpTipCamber" type="range" min="0" max="15" step="1" value="5" class="mb-2 w-full">
       <label class="mb-1 block text-xs">Tebal Pangkal (Root): <b id="valRootThick">12</b>%</label>
-      <input id="inpRootThick" type="range" min="8" max="22" step="1" value="12" class="mb-2 w-full">
+      <input id="inpRootThick" type="range" min="6" max="22" step="1" value="12" class="mb-2 w-full">
       <label class="mb-1 block text-xs">Tebal Hujung (Tip): <b id="valTipThick">6</b>%</label>
       <input id="inpTipThick" type="range" min="3" max="12" step="1" value="6" class="mb-2 w-full">
       <label class="mb-1 block text-xs">Kecondongan Paksi (Axial Lean): <b id="valAxialLean">8</b> mm</label>
       <input id="inpAxialLean" type="range" min="-30" max="30" step="1" value="8" class="mb-2 w-full">
       <label class="mb-1 block text-xs">Tebal Min. Trailing Edge: <b id="valTEMin">1.2</b> mm</label>
-      <input id="inpTEMin" type="range" min="0.4" max="3.0" step="0.2" value="1.2" class="mb-2 w-full">
+      <input id="inpTEMin" type="range" min="0.4" max="3.0" step="0.1" value="1.2" class="mb-2 w-full">
       <label class="mb-1 block text-xs">Diameter Lubang Aci (Bore): <b id="valShaftBore">20</b> mm</label>
-      <input id="inpShaftBore" type="range" min="0" max="80" step="2" value="20" class="mb-2 w-full">
-      <label class="mb-1 block text-xs">Nisbah Spinner Elipsoid: <b id="valSpinnerRatio">1.2</b> x</label>
-      <input id="inpSpinnerRatio" type="range" min="0.5" max="2.0" step="0.1" value="1.2" class="mb-2 w-full">
+      <input id="inpShaftBore" type="range" min="0" max="80" step="1" value="20" class="mb-2 w-full">
+      <label class="mb-1 block text-xs">Nisbah Spinner (0 = Hab Rata): <b id="valSpinnerRatio">1.2</b> x</label>
+      <input id="inpSpinnerRatio" type="range" min="0" max="2.0" step="0.1" value="1.2" class="mb-2 w-full">
       <label class="flex items-center gap-2 text-xs mt-1"><input id="chkTipTrim" type="checkbox" checked> Concentric Tip Trimming</label>
     </details>
 
-    <!-- PAPARAN -->
     <!-- PAPARAN -->
     <section class="mb-3 border-t pt-3">
       <label class="mb-1.5 flex items-center gap-2 text-xs font-semibold text-sky-800"><input id="chkSpin" type="checkbox"> Putarkan Rotor (Animasi)</label>
@@ -115,7 +122,6 @@
       <label class="mb-1.5 flex items-center gap-2 text-xs"><input id="chkAxis" type="checkbox" checked> Paksi & Arah Aliran</label>
       <label class="flex items-center gap-2 text-xs"><input id="chkPhysical" type="checkbox"> Animasi Laju Fizikal</label>
     </section>
-    
 
     <!-- EKSPORT CAD & PANDUAN SWFS -->
     <div class="border-t pt-3">
