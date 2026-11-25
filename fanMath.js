@@ -6,6 +6,14 @@ export function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
 
+// Kira lebar kord setempat (mm) termasuk Kembung Tengah (Mid-Bulge)
+export function getChord(s, v) {
+  const sClamped = clamp(s, 0, 1);
+  const taperFactor = 1 + (v.Taper - 1) * Math.pow(sClamped, 1.5);
+  const bulgeFactor = (v.MidBulge || 0) * Math.sin(Math.PI * sClamped);
+  return Math.max(4, v.Root * (taperFactor + bulgeFactor));
+}
+
 // Kira sudut aliran relatif (beta) dan sudut bilah (twist) pada kedudukan s (0..1)
 export function getStationAero(s, v) {
   const sClamped = clamp(s, 0, 1);
@@ -13,7 +21,7 @@ export function getStationAero(s, v) {
   const rM = Math.max(0.005, rMm / 1000);
   const omega = (2 * Math.PI * v.RPM) / 60;
   const U = omega * rM; // Halaju tangen (m/s)
-  const Vz = v.Wind;    // Halaju paksi (m/s)
+  const Vz = v.Wind;    // Sasaran halaju paksi (m/s)
   const W = Math.hypot(U, Vz);
 
   // Sudut aliran relatif dari satah putaran (darjah)
@@ -75,11 +83,15 @@ export function c4Surfaces(camberPct, thicknessPct, chordMm, teMinMm, count = 24
 // Transformasi titik profil 2D kepada koordinat 3D (xr, yPos, zr)
 export function transformSectionPoint(p, s, v) {
   const sClamped = clamp(s, 0, 1);
-  const chordFactor = 1 + (v.Taper - 1) * Math.pow(sClamped, 1.5);
-  const chord = v.Root * chordFactor;
+  const chord = getChord(s, v);
   const { twistDeg } = getStationAero(s, v);
 
-  const sweepOffset = -v.Sweep * (2 * Math.pow(sClamped, 3) - sClamped);
+  // Tanda negatif (-) memastikan Sweep positif = Forward Sweep (mengikut arah putaran)
+  const sweepOffset =
+    v.SweepMode === 'c-curve'
+      ? -v.Sweep * Math.pow(sClamped, 1.8)
+      : -v.Sweep * (2 * Math.pow(sClamped, 3) - sClamped);
+
   const leanOffset = v.AxialLean * Math.pow(sClamped, 1.5);
 
   const pitchAxis = 0.45;
