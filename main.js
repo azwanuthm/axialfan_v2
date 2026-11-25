@@ -196,3 +196,29 @@ $('btnDownloadSWFS').addEventListener('click', () => {
   const base = getBaseFilename('Rotor');
   downloadBlob(new Blob([$('swfsContent').textContent], { type: 'text/plain;charset=utf-8' }), `${base}_Params.txt`);
 });
+// --- Loop Animasi ---
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+});
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const rpm = Number($('inpRPM').value);
+  if ($('chkSpin').checked && rpm > 0) {
+    const physical = $('chkPhysical').checked;
+    const omega = (2 * Math.PI * rpm) / 60;
+    rotorGroup.rotation.z += omega * dt * (physical ? 1 : 0.05);
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+syncUIValues();
+updateRotor();
+setCameraView('iso');
+animate();
